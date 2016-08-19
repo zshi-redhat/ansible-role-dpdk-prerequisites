@@ -1,0 +1,44 @@
+---
+
+- name: Set Selinux=permissive on boot
+  lineinfile:
+    dest: '/etc/sysconfig/selinux'
+    regexp: '^SELINUX='
+    line: 'SELINUX=permissive'
+  register: selinux
+
+- name: Add parameters to grub
+  lineinfile:
+    dest: '/etc/default/grub'
+    regexp: '^GRUB_CMDLINE_LINUX="(?!.* {{ item.regex }})(.*)"'
+    line: 'GRUB_CMDLINE_LINUX="\1 {{ item.context }}"'
+    state: present
+    backrefs: yes
+  with_items:
+    - { regex: 'intel_iommu=on', context: 'intel_iommu=on' }
+    - { regex: 'iommu=on', context: 'iommu=on' }
+    - { regex: 'hugepagesz=', context: 'hugepagesz={{ hugepages_size }} default_hugepagesz={{ hugepages_size }} hugepages={{ hugepages_count }}' }
+  register: grub
+
+- name: Make grub
+  command: "grub2-mkconfig -o /boot/grub2/grub.cfg"
+  when: grub.changed
+  register: make_grub
+
+- name: Set the vfio_pci module to load on boot
+  lineinfile:
+    dest: "/etc/modules-load.d/vfio_pci.conf"
+    regexp: "^vfio_pci"
+    line: "vfio_pci"
+    create: yes
+  register: vfio
+
+- name: Restart
+  shell: sleep 2 && shutdown -r now "Ansible triggered reboot"
+  async: 1
+  poll: 0
+  ignore_errors: true
+  when: selinux.changed or make_grub.changed or vfio.changed
+
+- name: Wait for server to reboot successfully
+  local_action: wait_for host="{{ ansible_default_ipv4.address }}" search_regex="OpenSSH" port=22 timeout=600 connect_timeout=30 delay=5

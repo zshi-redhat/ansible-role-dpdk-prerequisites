@@ -1,0 +1,5 @@
+---
+- hosts: remotehost
+  remote_user: root
+  roles:
+    - ansible-role-dpdk-prerequisites

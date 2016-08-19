@@ -1,0 +1,13 @@
+---
+dependencies: []
+
+galaxy_info:
+  author: zenghui.shi
+  description: Install DPDK prerequisites on RHEL
+  company: redhat
+  license: license (BSD)
+  min_ansible_version: 1.2
+  galaxy_tags:
+    - dpdk
+    - prerequisites
+    - rhel
